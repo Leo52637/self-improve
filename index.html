@@ -13,8 +13,8 @@ label.row{display:flex;gap:12px;align-items:center;cursor:pointer}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--ac)}
 input,select,textarea,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px;width:100%;margin:4px 0}
 button{background:var(--ac);color:#06201c;border:0;font-weight:600;cursor:pointer}button.ghost{background:none;color:var(--mu);border:1px solid var(--bd)}
-.chips{display:flex;gap:6px;flex-wrap:wrap}.chips label{padding:6px 10px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;font-size:14px}
-.chips input{display:none}.chips input:checked+span{color:var(--ac);font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips label{padding:6px 10px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;font-size:14px;position:relative}
+.chips input{position:absolute;opacity:0;width:1px;height:1px;margin:0;padding:0}.chips label:has(:focus-visible){outline:2px solid var(--ac)}.chips input:checked+span{color:var(--ac);font-weight:700}
 .mu{color:var(--mu);font-size:14px}.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--ac)}
 nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;justify-content:center}
 nav button{background:none;color:var(--mu);border:0;border-radius:0;width:auto;flex:1;max-width:112px;margin:0;padding:14px 4px;font-size:13px}nav button.on{color:var(--ac)}
@@ -24,6 +24,7 @@ nav button{background:none;color:var(--mu);border:0;border-radius:0;width:auto;f
 .s1{--c:var(--s1)}.s2{--c:var(--s2)}.ln{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{fill:var(--c);stroke:var(--card);stroke-width:2}.br{fill:var(--s1)}
 .k{display:inline-block;width:14px;height:2px;background:var(--c);vertical-align:middle;margin:0 4px 0 10px}
 .ins{border-left:3px solid var(--ac);overflow-wrap:anywhere}.ins a{color:var(--tx);font-weight:600;white-space:nowrap}
+.card,.mu{overflow-wrap:anywhere}textarea{resize:vertical}
 summary{color:var(--mu);font-size:13px;cursor:pointer;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;margin-top:4px}td,th{text-align:left;padding:3px 4px;border-bottom:1px solid var(--bd)}
 </style></head><body>
 <div id="app"></div>
@@ -31,15 +32,19 @@ summary{color:var(--mu);font-size:13px;cursor:pointer;margin-top:6px}table{width
 <script>
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 let S;try{S=JSON.parse(localStorage.getItem('si'))}catch(e){}
-S=S||{areas:['Body','Mind','Skills'],goals:[],done:{},checkins:{},reminder:{on:false,time:'20:00',last:''}};for(const k of['done','checkins','values'])S[k]=S[k]||{};
+S=S||{areas:['Body','Mind','Skills'],goals:[],done:{},checkins:{},reminder:{on:false,time:'20:00',last:''}};for(const k of['done','checkins','values'])S[k]=S[k]||{};if(!Array.isArray(S.reviews))S.reviews=[];
 const save=()=>localStorage.setItem('si',JSON.stringify(S));
 const key=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const wd=d=>(d.getDay()+6)%7;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let tab='today';const $=s=>document.querySelector(s);
-const bar=p=>`<div class="bar"><i style="width:${Math.round(p*100)}%"></i></div>`;
+let tab='today',R=null,E=null;const $=s=>document.querySelector(s); // R = monthly review draft, E = goal being edited
+const bar=p=>`<div class="bar"><i style="width:${Math.round(p*100)}%"></i></div>`,pl=n=>n==1?'day':'days',
+  tile=(l,v,u)=>`<div class="card tile"><div class="mu">${l}</div><b>${v}</b><span class="mu">${u}</span></div>`;
+// days in effect on d: g.dh=[[changedAt ms, old days],...] oldest first; a change counts from its own day on, so earlier days keep the old schedule
+const D0=new WeakMap(),d0=e=>D0.get(e)??D0.set(e,new Date(e[0]).setHours(0,0,0,0)).get(e); // change-day midnight, cached: stats call daysOn ~100k times
+const daysOn=(g,d)=>(g.dh||[]).find(e=>d<d0(e))?.[1]||g.days;
 // a goal only counts from the day it was created (id = creation time in base 36; NaN ids stay included) until the day it was deleted (off)
-const scheduled=d=>{const e=new Date(d);e.setHours(23,59,59,999);return S.goals.filter(g=>g.days.includes(wd(d))&&!(parseInt(g.id,36)>e)&&!(g.off<=e))};
+const scheduled=d=>{const e=new Date(d);e.setHours(23,59,59,999);return S.goals.filter(g=>daysOn(g,d).includes(wd(d))&&!(parseInt(g.id,36)>e)&&!(g.off<=e))};
 const isDone=(d,id)=>!!(S.done[key(d)]||{})[id];
 const dayOk=(d,id)=>{const l=scheduled(d).filter(g=>!id||g.id==id);return l.length?l.every(g=>isDone(d,g.id)):null};
 // f(d): true=complete, false=missed, null=nothing scheduled (skipped); an unfinished today never breaks the run
@@ -137,12 +142,32 @@ function lineChart(lab,ser,n,ticks,xl,join,R){const y0=ticks[0],y1=ticks.at(-1),
     o+=`<g class="hit"><rect x="${a}" y="${T}" width="${b-a}" height="${H-T-B}"/><line x1="${sx(i)}" x2="${sx(i)}" y1="${T}" y2="${H-B}"/>
     <title>${esc(xl(i))}: ${vs.map(s=>(s.n?esc(s.n)+' ':'')+rnd(s.v[i])).join(', ')||'no data'}</title></g>`});
   return svg(lab,o)}
+// monthly review: the 28 full days ending yesterday vs the 28 before; due 28 days after the last review, or (none yet) once an active goal is 28 days old
+const ago=(ms,now)=>Math.round((new Date(now).setHours(0,0,0,0)-new Date(ms).setHours(0,0,0,0))/864e5); // calendar days; NaN for a bad id, never throws
+const due=now=>{const r=S.reviews[S.reviews.length-1];return r?ago(r.at,now)>=28:S.goals.some(g=>!g.off&&!(ago(parseInt(g.id,36),now)<28))};
+const ACT={keep:'Keep',raise:'Raise',lower:'Lower',drop:'Drop'},okG=o=>!!(String(o.name??'').trim()&&o.days?.length);
+// p = rounded % done, b = scheduled days in the period -> [default action, label, reason]; never defaults to drop
+const sug=(p,b)=>b<4?['keep','Keep',`${b?`Only ${b} scheduled ${pl(b)}`:'Not scheduled'} this period: not enough data yet.`]
+  :p>=85?['raise','Raise',`Done ${p}% of the time: ready for more days or a bigger version.`]
+  :p>=50?['keep','Keep',`Done ${p}% of the time: steady, keep it as it is.`]
+  :p>=20||b<6?['lower','Lower',`Done ${p}% of the time: fewer days or a smaller version should be easier to keep doing.`]
+  :['lower','Lower or drop',`Done ${p}% of ${b} scheduled days: make it much smaller, or drop it.`];
+function rev(now){const day=i=>{const d=new Date(now);d.setDate(now.getDate()-i);return d},av=a=>a.length?Math.round(a.reduce((s,x)=>s+x,0)/a.length*10)/10:null,
+  per=o=>{let a=0,b=0,ci=0;const m=[],e=[];for(let i=o+1;i<=o+28;i++){const d=day(i),l=scheduled(d),c=S.checkins[key(d)];b+=l.length;a+=l.filter(g=>isDone(d,g.id)).length;
+    if(c){ci++;if(+c.mood>0)m.push(+c.mood);if(+c.energy>0)e.push(+c.energy)}}return{pct:b?Math.round(a/b*100):null,ci,mood:av(m),energy:av(e)}};
+  return{at:+now,from:key(day(28)),to:key(day(1)),lab:md(day(28))+' – '+md(day(1)),c:per(0),p:per(28),best:streak(d=>dayOk(d),28,day(1)).best,ins:insights(now).slice(0,3),worked:'',didnt:'',focus:'',
+    g:S.goals.filter(g=>!g.off).map(g=>{let a=0,b=0;const v=[];for(let i=28;i;i--){const d=day(i),r=dayOk(d,g.id),x=S.values[key(d)]?.[g.id];if(r!=null){b++;a+=r}if(typeof x=='number'&&isFinite(x))v.push(x)}
+      const p=b?Math.round(a/b*100):0,s=sug(p,b);return{g,p,b,v,s,a:s[0],name:g.name,days:[...g.days]}})}}
+const lb=(l,h)=>`<label><span class="mu">${l}</span>${h}</label>`;
+const dch=(a,p)=>`<div class="chips">${DAYS.map((d,j)=>`<label><input type="checkbox" ${a.includes(j)?'checked':''} onchange="tgd(${p},${j})"><span>${d}</span></label>`).join('')}</div>`;
+const START=`<button onclick="R=null;tab='review';render();window.scrollTo(0,0)">Start review</button>`; // window.: a bare scrollTo in a handler is the button's own
 
 const views={
 today(){
   // Today is the launch screen: a bug in insights must never blank it
   const t=new Date(),k=key(t),list=scheduled(t),n=list.filter(g=>isDone(t,g.id)).length,c=S.checkins[k]||{},top=(()=>{try{return insights(t)[0]}catch(e){}})();
-  return `<h1>Today</h1><div class="mu">${t.toDateString()}</div>
+  return `<h1>Today</h1><div class="mu">${t.toDateString()}</div>${S.focus?`<div class="mu">This month's focus: ${esc(S.focus)}</div>`:''}
+  ${due(t)?`<div class="card"><b>Your monthly review is ready</b><div class="mu">Look back at the last 4 weeks and adjust your goals.</div>${START}</div>`:''}
   ${top?`<div class="card ins" style="font-size:14px">${esc(top.text)} <a href="#" onclick="tab='progress';render();return false">See all insights</a></div>`:''}
   ${list.length?bar(n/list.length):''}
   ${list.map(g=>`<div class="card" style="display:flex;gap:8px;align-items:center"><label class="row" style="flex:1"><input type="checkbox" ${isDone(t,g.id)?'checked':''} onchange="tog('${g.id}')">
@@ -162,8 +187,7 @@ week(){
     <div class="mu">${l.map(g=>(isDone(d,g.id)?'✓ ':'· ')+esc(g.name)).join('<br>')}</div></div>`}).join('')},
 progress(){
   const t=new Date(),day=i=>{const d=new Date(t);d.setDate(t.getDate()-i);return d},all=streak(d=>dayOk(d)),
-    ci=[...Array(7)].filter((_,i)=>S.checkins[key(day(i))]).length,pl=n=>n==1?'day':'days',
-    tile=(l,v,u)=>`<div class="card tile"><div class="mu">${l}</div><b>${v}</b><span class="mu">${u}</span></div>`,ins=insights(t),
+    ci=[...Array(7)].filter((_,i)=>S.checkins[key(day(i))]).length,ins=insights(t),
     logs=new Set([...Object.keys(S.done).filter(k=>Object.values(S.done[k]||{}).some(Boolean)),...Object.keys(S.checkins),...Object.keys(S.values)]).size;
   const mon=day(wd(t)),wk=[...Array(8)].map((_,w)=>{const m=new Date(mon);m.setDate(mon.getDate()-(7-w)*7);let a=0,b=0;
     for(let i=0;i<7;i++){const d=new Date(m);d.setDate(m.getDate()+i);if(d>t)break;const l=scheduled(d);b+=l.length;a+=l.filter(g=>isDone(d,g.id)).length}
@@ -187,11 +211,36 @@ progress(){
   <h2>Mood & energy, last 30 days</h2><div class="card">${cn.length?`<div class="mu"><span class="k s1"></span>Mood<span class="k s2"></span>Energy</div>`
     +lineChart(`Mood and energy, last 30 days: ${cn.length} check-ins, latest mood ${cn.at(-1).mood}, energy ${cn.at(-1).energy}, on a 1 to 10 scale`,mo,30,[1,4,7,10],cd,0,60)
     +tbl(['Date','Mood','Energy'],ck.map((c,i)=>c&&[cd(i),c.mood,c.energy]).filter(Boolean)):'<div class="mu">No check-ins in the last 30 days. Save an evening check-in on the Today tab.</div>'}</div>
-  <h2>Measures</h2>${ms||`<div class="card mu">${ug.length?'Log at least two values on the Today tab to see a chart.':'Add a measure to a goal (e.g. 30 m sprint, s) to chart it here.'}</div>`}`},
+  <h2>Measures</h2>${ms||`<div class="card mu">${ug.length?'Log at least two values on the Today tab to see a chart.':'Add a measure to a goal (e.g. 30 m sprint, s) to chart it here.'}</div>`}
+  <h2 id="mr">Monthly review</h2><div class="card"><div class="mu">${due(t)?'Your monthly review is ready.':'Look back at the last 28 days, compare them with the 28 before, and adjust your goals.'}</div>${START}</div>
+  ${S.reviews.slice().reverse().map(r=>`<details class="card"><summary style="color:var(--tx);font-size:15px;margin:0">${esc(r.from)} to ${esc(r.to)} · ${r.pct==null?'nothing scheduled':esc(r.pct)+'% done'}</summary>
+    <div class="mu">${r.prevPct==null?'Nothing scheduled':esc(r.prevPct)+'% done'} in the 28 days before</div>
+    <div style="margin-top:6px">${(r.decisions||[]).map(d=>`${esc(d.name)}: <b>${esc(ACT[d.action]||d.action)}</b>`).join('<br>')}</div>
+    ${[['worked','What worked'],['didnt',"What didn't"],['focus','Focus']].map(([k,l])=>r[k]?`<div style="margin-top:6px;white-space:pre-line"><span class="mu">${l}</span><br>${esc(r[k])}</div>`:'').join('')}</details>`).join('')}`},
+review(){
+  R=R||rev(new Date());const{c,p}=R,f=v=>v.toFixed(1),
+    cmp=(l,k)=>c[k]==null?'':`<div>${l} <b>${f(c[k])}</b> <span class="mu">${p[k]==null?'':'vs '+f(p[k])+' before'}</span></div>`;
+  return `<h1>Monthly review</h1><div class="mu">${R.lab}, compared with the 28 days before</div>
+  <h2>Summary</h2><div class="tiles">${tile('Completion',c.pct==null?'–':c.pct+'%',c.pct!=null&&p.pct!=null?` vs ${p.pct}% (${c.pct>=p.pct?'+':''}${c.pct-p.pct})`:'')}${tile('Best streak',R.best,' '+pl(R.best))}${tile('Check-ins',c.ci,' of 28')}</div>
+  ${c.mood!=null||c.energy!=null?`<div class="card">${cmp('Average mood','mood')}${cmp('Average energy','energy')}</div>`:''}
+  ${R.ins.map(x=>`<div class="card ins" style="font-size:14px">${esc(x.text)}</div>`).join('')}
+  <h2>Goals</h2>${R.g.map((x,i)=>`<div class="card"><b>${esc(x.g.name)}</b> <span class="mu">${esc(x.g.area)}</span>
+    <div class="mu">${x.b?`${x.p}% done · ${x.b} scheduled ${pl(x.b)}`:'Not scheduled in this period'}${x.g.unit&&x.v.length?` · ${rnd(x.v[0])}${x.v.length>1?' → '+rnd(x.v[x.v.length-1]):''} ${esc(x.g.unit)}`:''}</div>${x.b?bar(x.p/100):''}
+    <div style="font-size:14px;margin:8px 0 4px">Suggested: <b>${x.s[1]}</b>. ${x.s[2]}</div>
+    <div class="chips" role="radiogroup" aria-label="Decision for ${esc(x.g.name)}">${Object.entries(ACT).map(([k,l])=>`<label><input type="radio" name="dec${i}" ${x.a==k?'checked':''} onchange="R.g[${i}].a='${k}';render();$('[name=dec${i}]:checked').focus()"><span>${l}</span></label>`).join('')}</div>
+    ${x.a=='raise'||x.a=='lower'?`<div class="mu" style="margin-top:8px">${x.a=='raise'?'Pick more days, or change the name to a bigger version (e.g. Run 30 min).':'Pick fewer days, or change the name to a smaller version (e.g. Run 10 min).'}</div><input value="${esc(x.name)}" aria-label="Goal name" oninput="R.g[${i}].name=this.value">${dch(x.days,`R.g[${i}].days`)}`
+      :x.a=='drop'?'<div class="mu" style="margin-top:8px">Removed from your goals when you save. Its history stays.</div>':''}</div>`).join('')||'<div class="card mu">No active goals to review.</div>'}
+  <h2>Reflection</h2><div class="card">${[['worked','What worked this month?'],['didnt',"What didn't?"],['focus','One focus for next month']].map(([k,l])=>lb(l,`<textarea rows="3" oninput="R.${k}=this.value">${esc(R[k])}</textarea>`)).join('')}</div>
+  <button onclick="saveReview()">Save review</button><button class="ghost" onclick="R=null;tab='progress';render();mr.scrollIntoView()">Cancel</button>`},
 goals(){
-  return `<h1>Goals</h1>`+(S.goals.filter(g=>!g.off).map(g=>`<div class="card"><b>${esc(g.name)}</b> <span class="mu">${esc(g.area)}</span><br>
+  return `<h1>Goals</h1>`+(S.goals.filter(g=>!g.off).map(g=>`<div class="card">${E&&E.id==g.id?lb('Name',`<input value="${esc(E.name)}" oninput="E.name=this.value">`)
+  +lb('Area',`<select onchange="E.area=this.value">${S.areas.map(a=>`<option ${a==E.area?'selected':''}>${esc(a)}</option>`).join('')}</select>`)
+  +`<span class="mu">Days</span>${dch(E.days,'E.days')}`+lb('Measure (optional)',`<input value="${esc(E.unit)}" placeholder="e.g. 30 m sprint, s" oninput="E.unit=this.value">`)
+  +lb('Why it matters (optional)',`<input value="${esc(E.why)}" oninput="E.why=this.value">`)
+  +`<div style="display:flex;gap:8px"><button onclick="saveEdit()">Save</button><button class="ghost" onclick="E=null;render()">Cancel</button></div>`
+  :`<b>${esc(g.name)}</b> <span class="mu">${esc(g.area)}</span><br>
   <span class="mu">${g.days.map(i=>DAYS[i]).join(' ')}${g.unit?' · '+esc(g.unit):''}${g.why?' · '+esc(g.why):''}</span>
-  <button class="ghost" onclick="del('${g.id}')">Delete</button></div>`).join('')||'<div class="card mu">No goals yet.</div>')+
+  <div style="display:flex;gap:8px"><button class="ghost" onclick="edit('${g.id}')">Edit</button><button class="ghost" onclick="del('${g.id}')">Delete</button></div>`}</div>`).join('')||'<div class="card mu">No goals yet.</div>')+
   `<h2>Add a goal</h2><div class="card"><input id="gn" placeholder="Action, e.g. Run 20 min">
   <select id="ga">${S.areas.map(a=>`<option>${esc(a)}</option>`).join('')}</select>
   <input id="gw" placeholder="Why it matters (optional)"><input id="gu" placeholder="Measure (e.g. 30 m sprint, s), optional">
@@ -216,7 +265,21 @@ function addGoal(){const name=gn.value.trim(),days=[...document.querySelectorAll
   if(!name||!days.length)return alert('Give it a name and pick at least one day.');
   S.goals.push({id:Date.now().toString(36),name,area:ga.value,why:gw.value.trim(),unit:gu.value.trim(),days});save();render()}
 function logv(id,el){if(el.validity.badInput)return alert('Use a dot for decimals, e.g. 4.5');const v=el.value,k=key(new Date()),o=S.values[k]=S.values[k]||{};if(v==='')delete o[id];else o[id]=+v;if(!Object.keys(o).length)delete S.values[k];save()}
-function del(id){if(confirm('Delete this goal?')){S.goals.find(g=>g.id==id).off=Date.now();save();render()}}
+function del(id,ok){if(ok||confirm('Delete this goal?')){S.goals.find(g=>g.id==id).off=Date.now();save();render()}}
+// partial update, same validation as addGoal; a days change files the old days in g.dh so the days before today keep their stats
+function editGoal(id,o){const g=S.goals.find(g=>g.id==id),n={...g,...o};if(!g||!okG(n))return false;
+  for(const f of['name','why','unit'])if(typeof n[f]=='string')n[f]=n[f].trim();
+  if(''+n.days!=''+g.days)n.dh=[...g.dh||[],[Date.now(),g.days]];Object.assign(g,n);save();return true}
+function edit(id){const g=S.goals.find(g=>g.id==id);E={id,name:g.name,area:g.area,why:g.why||'',unit:g.unit||'',days:[...g.days]};render()}
+function saveEdit(){if(!editGoal(E.id,E))return alert('Give it a name and pick at least one day.');E=null;render()}
+function tgd(a,i){const j=a.indexOf(i);j<0?a.push(i):a.splice(j,1);a.sort()}
+// nothing touches S until every raise/lower edit is valid; Cancel just drops R
+function saveReview(){const ed=R.g.filter(x=>x.a=='raise'||x.a=='lower'),t=k=>R[k].trim(),focus=t('focus');
+  if(!ed.every(okG))return alert('Each goal you raise or lower needs a name and at least one day.');
+  ed.forEach(x=>editGoal(x.g.id,{name:x.name,days:x.days}));R.g.forEach(x=>x.a=='drop'&&del(x.g.id,1));
+  S.reviews.push({at:R.at,from:R.from,to:R.to,pct:R.c.pct,prevPct:R.p.pct,mood:R.c.mood,prevMood:R.p.mood,energy:R.c.energy,prevEnergy:R.p.energy,
+    decisions:R.g.map(x=>({id:x.g.id,name:x.g.name,action:x.a})),worked:t('worked'),didnt:t('didnt'),focus});
+  S.focus=focus;R=E=null;tab='progress';save();render();mr.scrollIntoView()} // E: a stale Goals edit form would undo these decisions
 function addArea(){const a=na.value.trim();if(a&&!S.areas.includes(a)){S.areas.push(a);save();render()}}
 function delArea(a){if(S.goals.some(g=>!g.off&&g.area==a))return alert('Move or delete that area\'s goals first.');S.areas=S.areas.filter(x=>x!=a);save();render()}
 async function remind(on){if(on&&await Notification.requestPermission()!='granted'){alert('Notifications are blocked in your browser.');on=false}S.reminder.on=on;save();render()}
