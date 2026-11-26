@@ -1,23 +1,43 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Self Improve</title>
-<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#10141c">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#10141c" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)">
+<script id="th">// in <head> so a chosen theme applies before the first paint; Settings calls th() too. ''/unknown = follow the system
+function th(t){t=t=='light'||t=='dark'?t:'';document.documentElement.dataset.theme=t||'system';
+  for(const m of document.querySelectorAll('meta[name=theme-color]'))m.content=(t||(/light/.test(m.media)?'light':'dark'))=='light'?'#f4f6fa':'#10141c'}
+try{th(JSON.parse(localStorage.getItem('si')).theme)}catch(e){th()}
+</script>
 <style>
-:root{--bg:#10141c;--card:#1a2030;--tx:#e8ecf3;--mu:#8a94a8;--ac:#5eead4;--bd:#2a3347;--s1:#3987e5;--s2:#d95926}
-@media(prefers-color-scheme:light){:root{--bg:#f4f6fa;--card:#fff;--tx:#161b26;--mu:#5d667a;--ac:#0d9488;--bd:#dde2ec;--s1:#2a78d6;--s2:#eb6834}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding:0 16px 84px;max-width:560px;margin:auto}
-h1{font-size:22px;margin:20px 0 4px}h2{font-size:15px;color:var(--mu);margin:20px 0 8px;font-weight:600}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:8px 0}
-label.row{display:flex;gap:12px;align-items:center;cursor:pointer}
+:root{--bg:#10141c;--card:#1a2030;--tx:#e8ecf3;--mu:#8a94a8;--ac:#5eead4;--bd:#2a3347;--s1:#3987e5;--s2:#d95926;color-scheme:dark}
+:root[data-theme=light]{--bg:#f4f6fa;--card:#fff;--tx:#161b26;--mu:#5d667a;--ac:#0d9488;--bd:#dde2ec;--s1:#2a78d6;--s2:#eb6834;color-scheme:light}
+@media(prefers-color-scheme:light){:root:not([data-theme=dark]){--bg:#f4f6fa;--card:#fff;--tx:#161b26;--mu:#5d667a;--ac:#0d9488;--bd:#dde2ec;--s1:#2a78d6;--s2:#eb6834;color-scheme:light}}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:560px;margin:auto;
+  padding:env(safe-area-inset-top) max(16px,env(safe-area-inset-right)) calc(92px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em;line-height:1.2;margin:24px 0 2px}h2{font-size:15px;color:var(--mu);margin:26px 0 8px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin:10px 0}.lead{display:block;font-size:18px;margin-bottom:4px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+label.row{display:flex;gap:14px;align-items:center;cursor:pointer;min-height:44px}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--ac)}
-input,select,textarea,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px;width:100%;margin:4px 0}
-button{background:var(--ac);color:#06201c;border:0;font-weight:600;cursor:pointer}button.ghost{background:none;color:var(--mu);border:1px solid var(--bd)}
-.chips{display:flex;gap:6px;flex-wrap:wrap}.chips label{padding:6px 10px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;font-size:14px;position:relative}
-.chips input{position:absolute;opacity:0;width:1px;height:1px;margin:0;padding:0}.chips label:has(:focus-visible){outline:2px solid var(--ac)}.chips input:checked+span{color:var(--ac);font-weight:700}
+label.row input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:26px;height:26px;margin:0;padding:0;border:2px solid var(--mu);border-radius:50%;background:none;display:grid;place-items:center;cursor:pointer;transition:background .15s,border-color .15s}
+label.row input:checked{background:var(--ac);border-color:var(--ac)}label.row input:checked::after{content:'';width:6px;height:12px;margin-top:-3px;border:solid var(--bg);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+input,select,textarea,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;width:100%;margin:4px 0}
+input[type=range]{accent-color:var(--ac);background:none;border:0;padding:0;height:32px}
+button{background:var(--ac);color:#06201c;border:0;font-weight:600;cursor:pointer;min-height:44px}button.ghost{background:none;color:var(--mu);border:1px solid var(--bd)}button:active{opacity:.8}
+.task{display:flex;gap:8px;align-items:center;padding:0 14px 0 0}.task label.row{flex:1;padding:12px 0 12px 16px;min-height:60px}.task.pop label input{animation:pop .35s ease-out}
+.yay{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;margin:14px 0 6px}.yay svg{width:22px;height:22px;fill:var(--ac);flex:none}.yay.pop{animation:rise .5s ease-out}.yay.pop svg{animation:spin .7s ease-out}
+@keyframes pop{40%{transform:scale(1.25)}}@keyframes rise{from{opacity:0;transform:translateY(6px)}}@keyframes spin{from{transform:scale(.3) rotate(-90deg)}}
+@media(prefers-reduced-motion:reduce){*,::before,::after{animation:none!important;transition:none!important}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips label{padding:11px 12px;border:1px solid var(--bd);border-radius:20px;cursor:pointer;font-size:14px;position:relative}
+.chips input{position:absolute;opacity:0;width:1px;height:1px;margin:0;padding:0}.chips label:has(:focus-visible){outline:2px solid var(--ac)}.chips input:checked+span{color:var(--tx);font-weight:700}.chips label:has(:checked){border-color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent)}
 .mu{color:var(--mu);font-size:14px}.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--ac)}
-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;justify-content:center}
-nav button{background:none;color:var(--mu);border:0;border-radius:0;width:auto;flex:1;max-width:112px;margin:0;padding:14px 4px;font-size:13px}nav button.on{color:var(--ac)}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;justify-content:center;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+nav button{background:none;color:var(--mu);border:0;border-radius:0;width:auto;flex:1;max-width:112px;margin:0;min-height:60px;padding:6px 2px 8px;font-size:12px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav svg{width:48px;height:28px;padding:3px 12px;border-radius:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--tx);font-weight:700}nav .on svg{color:var(--ac);background:color-mix(in srgb,var(--ac) 18%,transparent)}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tile{margin:0;padding:10px}.tile b{display:block;font-size:30px;font-weight:600;line-height:1.2}
 .viz{width:100%;height:auto;display:block;margin-top:8px}.viz *{vector-effect:non-scaling-stroke}.viz text{font-size:10px;fill:var(--mu)}.viz .vl{fill:var(--tx)}
 .viz line{stroke:var(--bd);stroke-width:1}.hit rect{fill:transparent}.hit line{opacity:0}.hit:hover line{opacity:1;stroke:var(--mu)}.hit:hover .br{opacity:.8}
@@ -37,7 +57,8 @@ const save=()=>localStorage.setItem('si',JSON.stringify(S));
 const key=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const wd=d=>(d.getDay()+6)%7;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let tab='today',R=null,E=null;const $=s=>document.querySelector(s); // R = monthly review draft, E = goal being edited
+let tab='today',R=null,E=null,P=null,J=null,PS;const $=s=>document.querySelector(s); // R = monthly review draft, E = goal being edited, P = backup awaiting Restore/Cancel, J = goal just ticked (animates once), PS = storage persisted?
+const TDF=new Intl.DateTimeFormat(undefined,{weekday:'long',day:'numeric',month:'long'}),STAR='M256 110l40 120h120l-98 72 38 118-100-74-100 74 38-118-98-72h120z';
 const bar=p=>`<div class="bar"><i style="width:${Math.round(p*100)}%"></i></div>`,pl=n=>n==1?'day':'days',
   tile=(l,v,u)=>`<div class="card tile"><div class="mu">${l}</div><b>${v}</b><span class="mu">${u}</span></div>`;
 // days in effect on d: g.dh=[[changedAt ms, old days],...] oldest first; a change counts from its own day on, so earlier days keep the old schedule
@@ -145,6 +166,10 @@ function lineChart(lab,ser,n,ticks,xl,join,R){const y0=ticks[0],y1=ticks.at(-1),
 // monthly review: the 28 full days ending yesterday vs the 28 before; due 28 days after the last review, or (none yet) once an active goal is 28 days old
 const ago=(ms,now)=>Math.round((new Date(now).setHours(0,0,0,0)-new Date(ms).setHours(0,0,0,0))/864e5); // calendar days; NaN for a bad id, never throws
 const due=now=>{const r=S.reviews[S.reviews.length-1];return r?ago(r.at,now)>=28:S.goals.some(g=>!g.off&&!(ago(parseInt(g.id,36),now)<28))};
+const nlogs=s=>new Set([...Object.keys(s.done).filter(k=>Object.values(s.done[k]||{}).some(Boolean)),...Object.keys(s.checkins),...Object.keys(s.values)]).size; // days with anything logged
+// backup card on Today: a week of logs, no backup in the last 30 days, not dismissed in the last 30 (ago() is NaN for never, so both checks pass)
+const nag=now=>nlogs(S)>=7&&!(ago(S.lastBackup,now)<=30)&&!(ago(S.backupNag,now)<30),
+  since=ms=>{if(!(ms>0))return 'never';const a=ago(ms,new Date());return a<1?'today':a==1?'yesterday':a+' days ago'};
 const ACT={keep:'Keep',raise:'Raise',lower:'Lower',drop:'Drop'},okG=o=>!!(String(o.name??'').trim()&&o.days?.length);
 // p = rounded % done, b = scheduled days in the period -> [default action, label, reason]; never defaults to drop
 const sug=(p,b)=>b<4?['keep','Keep',`${b?`Only ${b} scheduled ${pl(b)}`:'Not scheduled'} this period: not enough data yet.`]
@@ -161,24 +186,31 @@ function rev(now){const day=i=>{const d=new Date(now);d.setDate(now.getDate()-i)
 const lb=(l,h)=>`<label><span class="mu">${l}</span>${h}</label>`;
 const dch=(a,p)=>`<div class="chips">${DAYS.map((d,j)=>`<label><input type="checkbox" ${a.includes(j)?'checked':''} onchange="tgd(${p},${j})"><span>${d}</span></label>`).join('')}</div>`;
 const START=`<button onclick="R=null;tab='review';render();window.scrollTo(0,0)">Start review</button>`; // window.: a bare scrollTo in a handler is the button's own
+const NAV=[['today','Today','<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16 9.5"/>'],['week','Week','<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'],
+  ['progress','Progress','<path d="M4 20h16M7 16.5v-4M12 16.5V6.5M17 16.5v-7"/>'],['goals','Goals','<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'],
+  ['settings','Settings','<path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/>']];
 
 const views={
 today(){
   // Today is the launch screen: a bug in insights must never blank it
-  const t=new Date(),k=key(t),list=scheduled(t),n=list.filter(g=>isDone(t,g.id)).length,c=S.checkins[k]||{},top=(()=>{try{return insights(t)[0]}catch(e){}})();
-  return `<h1>Today</h1><div class="mu">${t.toDateString()}</div>${S.focus?`<div class="mu">This month's focus: ${esc(S.focus)}</div>`:''}
+  const t=new Date(),k=key(t),list=scheduled(t),n=list.filter(g=>isDone(t,g.id)).length,c=S.checkins[k]||{},top=(()=>{try{return insights(t)[0]}catch(e){}})(),live=S.goals.some(g=>!g.off);
+  return `<h1>Today</h1><div class="mu">${TDF.format(t)}</div>${S.focus?`<div class="mu">This month's focus: ${esc(S.focus)}</div>`:''}
   ${due(t)?`<div class="card"><b>Your monthly review is ready</b><div class="mu">Look back at the last 4 weeks and adjust your goals.</div>${START}</div>`:''}
   ${top?`<div class="card ins" style="font-size:14px">${esc(top.text)} <a href="#" onclick="tab='progress';render();return false">See all insights</a></div>`:''}
+  ${live?'':`<div class="card"><b class="lead">Welcome to Self Improve</b>Pick a few small goals and the days you'll do them, then tick them off here each day. A quick evening check-in tracks your mood and energy, and after a week or two Progress shows what's working.
+    <button onclick="tab='goals';render();gn.focus()">Add your first goal</button></div>`}
   ${list.length?bar(n/list.length):''}
-  ${list.map(g=>`<div class="card" style="display:flex;gap:8px;align-items:center"><label class="row" style="flex:1"><input type="checkbox" ${isDone(t,g.id)?'checked':''} onchange="tog('${g.id}')">
+  ${list.map(g=>`<div class="card task${g.id==J?' pop':''}"><label class="row"><input type="checkbox" ${isDone(t,g.id)?'checked':''} onchange="tog('${g.id}')">
   <span>${esc(g.name)}<br><span class="mu">${esc(g.area)}${g.unit?' · '+esc(g.unit):''}${g.why?' · '+esc(g.why):''}</span></span></label>
   ${g.unit?`<input type="number" step="any" inputmode="decimal" style="width:84px;margin:0" placeholder="${esc(g.unit)}" aria-label="${esc(g.name)}, today's value (${esc(g.unit)})" value="${(S.values[k]||{})[g.id]??''}" onchange="logv('${g.id}',this)">`:''}</div>`).join('')
-  ||'<div class="card mu">Nothing scheduled today. Add goals in the Goals tab.</div>'}
+  ||(live?'<div class="card mu">Nothing scheduled today. Enjoy the rest day.</div>':'')}${list.length&&n==list.length?`<div class="yay${J?' pop':''}"><svg viewBox="96 100 320 330" aria-hidden="true"><path d="${STAR}"/></svg>All done for today. Nice work.</div>`:''}
   <h2>Evening check-in</h2><div class="card">
   Mood <b id="mv">${c.mood||5}</b>/10<input type="range" min="1" max="10" value="${c.mood||5}" id="mood" oninput="mv.textContent=this.value">
   Energy <b id="ev">${c.energy||5}</b>/10<input type="range" min="1" max="10" value="${c.energy||5}" id="energy" oninput="ev.textContent=this.value">
   <input id="win" placeholder="One win today" value="${esc(c.win)}"><input id="fix" placeholder="One thing to fix" value="${esc(c.fix)}">
-  <button onclick="checkin()">${c.mood?'Update':'Save'} check-in</button></div>`},
+  <button onclick="checkin()">${c.mood?'Update':'Save'} check-in</button></div>
+  ${nag(t)?`<div class="card"><b>Back up your data</b><div class="mu">Your goals and logs are saved only on this device. A backup file lets you get them back on a new phone.</div>
+    <div style="display:flex;gap:8px"><button onclick="backup()">Back up now</button><button class="ghost" onclick="S.backupNag=Date.now();save();render()">Not now</button></div></div>`:''}`},
 week(){
   const t=new Date(),mon=new Date(t);mon.setDate(t.getDate()-wd(t));
   return `<h1>This week</h1>`+DAYS.map((_,i)=>{
@@ -188,7 +220,7 @@ week(){
 progress(){
   const t=new Date(),day=i=>{const d=new Date(t);d.setDate(t.getDate()-i);return d},all=streak(d=>dayOk(d)),
     ci=[...Array(7)].filter((_,i)=>S.checkins[key(day(i))]).length,ins=insights(t),
-    logs=new Set([...Object.keys(S.done).filter(k=>Object.values(S.done[k]||{}).some(Boolean)),...Object.keys(S.checkins),...Object.keys(S.values)]).size;
+    logs=nlogs(S);
   const mon=day(wd(t)),wk=[...Array(8)].map((_,w)=>{const m=new Date(mon);m.setDate(mon.getDate()-(7-w)*7);let a=0,b=0;
     for(let i=0;i<7;i++){const d=new Date(m);d.setDate(m.getDate()+i);if(d>t)break;const l=scheduled(d);b+=l.length;a+=l.filter(g=>isDone(d,g.id)).length}
     return{m,p:b?a/b:null}}),wl=i=>wk[i].m.toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
@@ -248,18 +280,25 @@ goals(){
   <button onclick="addGoal()">Add goal</button></div>`},
 settings(){
   const r=S.reminder;
-  return `<h1>Settings</h1><h2>Areas</h2><div class="card">
+  return `<h1>Settings</h1><h2>Your data</h2><div class="card"><div>Last backup: <b>${since(S.lastBackup)}</b></div>
+  <div class="mu">Your goals and logs are saved only in this browser on this device. Download a backup now and then and keep the file somewhere safe, like Files, Google Drive or an email to yourself.</div>
+  <button onclick="backup()">Download backup</button><button class="ghost" onclick="rf.click()">Restore from backup</button><input type="file" id="rf" accept="application/json,.json" hidden onchange="pick(this)">
+  ${PS==null?'':`<div class="mu">${PS?"Storage is persistent: the browser won't clear it to free up space.":'Storage is not persistent: the browser may clear it if the device runs low on space, so keep a backup.'}</div>`}</div>
+  ${P?`<div class="card" style="border-color:var(--ac)"><b>Restore this backup?</b><div>${esc(P.sum)}</div>
+    <div style="display:flex;gap:8px"><button onclick="restore()">Restore</button><button class="ghost" onclick="P=null;render()">Cancel</button></div></div>`:''}
+  ${localStorage.getItem('si-before-restore')!=null?`<div class="card"><div class="mu">Backup restored. Your data from before it stays on this device until you undo or restore again.</div><button class="ghost" onclick="undo()">Undo restore</button></div>`:''}
+  <h2>Theme</h2><div class="card"><div class="chips" role="radiogroup" aria-label="Theme">${[['','System'],['light','Light'],['dark','Dark']].map(([k,l])=>`<label><input type="radio" name="th" ${(S.theme||'')==k?'checked':''} onchange="theme('${k}')"><span>${l}</span></label>`).join('')}</div></div>
+  <h2>Areas</h2><div class="card">
   ${S.areas.map((a,i)=>`<div class="row" style="display:flex;justify-content:space-between">${esc(a)}<a onclick="delArea(S.areas[${i}])" class="mu">remove</a></div>`).join('')}
   <input id="na" placeholder="New area, e.g. Money"><button onclick="addArea()">Add area</button></div>
   <h2>Daily reminder</h2><div class="card"><label class="row"><input type="checkbox" ${r.on?'checked':''} onchange="remind(this.checked)">Remind me daily</label>
   <input type="time" value="${r.time}" onchange="S.reminder.time=this.value;save()">
   <div class="mu">Fires only while the app is open or running in the background; a closed phone app may miss it.</div></div>`}};
 
-function render(){
+function render(){const c=tab=='review'?'progress':tab; // the review belongs to Progress (its history and Start button live there)
   $('#app').innerHTML=views[tab]();
-  $('#nav').innerHTML=[['today','Today'],['week','Week'],['progress','Progress'],['goals','Goals'],['settings','Settings']]
-    .map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}
-function tog(id){const k=key(new Date());(S.done[k]=S.done[k]||{})[id]=!S.done[k][id];save();render()}
+  $('#nav').innerHTML=NAV.map(([k,l,p])=>`<button class="${k==c?'on':''}"${k==c?' aria-current="page"':''} onclick="tab='${k}';render();window.scrollTo(0,0)"><svg viewBox="0 0 24 24" aria-hidden="true">${p}</svg>${l}</button>`).join('')}
+function tog(id){const k=key(new Date());(S.done[k]=S.done[k]||{})[id]=!S.done[k][id];save();J=S.done[k][id]&&id;render();J=null}
 function checkin(){S.checkins[key(new Date())]={mood:+mood.value,energy:+energy.value,win:win.value,fix:fix.value};save();render()}
 function addGoal(){const name=gn.value.trim(),days=[...document.querySelectorAll('.gd:checked')].map(e=>+e.value);
   if(!name||!days.length)return alert('Give it a name and pick at least one day.');
@@ -283,10 +322,57 @@ function saveReview(){const ed=R.g.filter(x=>x.a=='raise'||x.a=='lower'),t=k=>R[
 function addArea(){const a=na.value.trim();if(a&&!S.areas.includes(a)){S.areas.push(a);save();render()}}
 function delArea(a){if(S.goals.some(g=>!g.off&&g.area==a))return alert('Move or delete that area\'s goals first.');S.areas=S.areas.filter(x=>x!=a);save();render()}
 async function remind(on){if(on&&await Notification.requestPermission()!='granted'){alert('Notifications are blocked in your browser.');on=false}S.reminder.on=on;save();render()}
+function theme(t){t?S.theme=t:delete S.theme;save();th(t);render();$('[name=th]:checked')?.focus()}
+// backup = all of S as a JSON file; phones get the share sheet (Save to Files, Drive...), desktops a download
+async function backup(){const d=new Date(),n=`self-improve-backup-${key(d)}.json`,
+  f=new File([JSON.stringify({app:'self-improve',version:1,exportedAt:d.toISOString(),data:S})],n,{type:'application/json'}),
+  dl=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),6e4)};
+  // touch devices only (desktop share sheets can't save a file); Chromium says canShare yet rejects .json with NotAllowedError, so any error but a cancel downloads
+  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare?.({files:[f]})){try{await navigator.share({files:[f]})}catch(e){if(e.name=='AbortError')return;dl()}} // cancelled: no backup was made
+  else dl();
+  S.lastBackup=Date.now();save();render()}
+// restore is a trust boundary: the new S is rebuilt from checked fields only, so unknown keys, wrong types and names like __proto__ never get in.
+// Top-level fields and goals with the wrong shape reject the file; malformed entries inside the logs are dropped, impossible dates too (Progress turns date gaps into array lengths).
+const ID=/^[\w-]{1,40}$/,DK={test:k=>{const d=new Date(k+'T12:00');return /^\d{4}-\d\d-\d\d$/.test(k)&&!isNaN(d)&&key(d)==k}},isO=x=>!!x&&typeof x=='object'&&!Array.isArray(x),str=x=>typeof x=='string',num=x=>typeof x=='number'&&isFinite(x),
+  nn=(n,w)=>`${n} ${w}${n==1?'':'s'}`,XDF=new Intl.DateTimeFormat(undefined,{day:'numeric',month:'short',year:'numeric'}),
+  // fresh object with the keys that pass kr and the values f returns; k in r skips inherited names (__proto__, constructor, toString...)
+  dict=(x,kr,f)=>{if(!isO(x))return;const r={};for(const[k,v]of Object.entries(x)){const w=kr.test(k)&&!(k in r)?f(v):undefined;if(w!==undefined)r[k]=w}return r},
+  fl=(x,ns,ss)=>{const r={};ns.forEach(f=>{if(num(x[f])||x[f]===null)r[f]=x[f]});ss.forEach(f=>{if(str(x[f]))r[f]=x[f]});return r};
+function readBackup(txt){
+  const no=m=>{throw Error(m)},ok=x=>x||no('That backup file is damaged or incomplete, so nothing was changed.');let o;
+  try{o=JSON.parse(txt)}catch(e){no("That file isn't a backup: it isn't valid JSON.")}
+  if(!isO(o)||o.app!=='self-improve')no("That file isn't a Self Improve backup.");
+  if(o.version!==1)no('That backup was made by a newer version of the app. Update the app and try again.');
+  const d=ok(isO(o.data)&&o.data),at=ok(str(o.exportedAt)&&Date.parse(o.exportedAt)),days=a=>ok(Array.isArray(a)&&a.every(x=>Number.isInteger(x)&&x>=0&&x<7))&&[...new Set(a)].sort();
+  const goals=ok(Array.isArray(d.goals)&&d.goals).map(g=>{ok(isO(g)&&str(g.id)&&ID.test(g.id)&&!(g.id in{})&&str(g.name)&&g.name.trim()); // ids go into onclick handlers
+    const n={...fl(g,[],['id','name','area','why','unit']),days:days(g.days)};if(num(g.off))n.off=g.off;
+    if(g.dh!=null)n.dh=ok(Array.isArray(g.dh)&&g.dh).map(e=>ok(Array.isArray(e)&&num(e[0]))&&[e[0],days(e[1])]).sort((a,b)=>a[0]-b[0]);return n});
+  ok(new Set(goals.map(g=>g.id)).size==goals.length);
+  const data={areas:ok(Array.isArray(d.areas)&&d.areas).filter(str),goals,
+    done:ok(dict(d.done,DK,v=>dict(v,ID,b=>typeof b=='boolean'?b:undefined))),
+    checkins:ok(dict(d.checkins,DK,c=>isO(c)?fl(c,['mood','energy'],['win','fix']):undefined)),
+    values:ok(dict(d.values,DK,v=>dict(v,ID,x=>num(x)?x:undefined))),
+    reviews:ok(Array.isArray(d.reviews)&&d.reviews).filter(isO).map(r=>({...fl(r,['at','pct','prevPct','mood','prevMood','energy','prevEnergy'],['from','to','worked','didnt','focus']),
+      decisions:(Array.isArray(r.decisions)?r.decisions:[]).filter(isO).map(x=>({...fl(x,[],['id','name']),action:Object.hasOwn(ACT,x.action)?x.action:'keep'}))})),
+    reminder:S.reminder,lastBackup:at}; // the reminder stays this device's own: it needs this device's notification permission
+  if(str(d.focus))data.focus=d.focus;if(d.theme=='light'||d.theme=='dark')data.theme=d.theme;
+  return{data,sum:`${nn(goals.filter(g=>!g.off).length,'goal')}, ${nn(nlogs(data),'day')} of logs, ${nn(data.reviews.length,'review')}, exported ${XDF.format(at)}. This replaces what's on this device now.`}}
+async function pick(el){const f=el.files[0];el.value='';if(!f)return;
+  if(f.size>5*2**20)return alert('That file is too big to be a Self Improve backup (over 5 MB), so nothing was changed.');
+  try{P=readBackup(await f.text());render()}catch(e){alert(e.message)}}
+// the data from before is kept in 'si-before-restore' until Undo restore or the next restore; with storage full nothing changes (an earlier copy is put back)
+function restore(){const o=localStorage.getItem('si-before-restore');try{localStorage.setItem('si-before-restore',JSON.stringify(S));localStorage.setItem('si',JSON.stringify(P.data))}
+  catch(e){try{o==null?localStorage.removeItem('si-before-restore'):localStorage.setItem('si-before-restore',o)}catch(e){}return alert("Couldn't restore: this device is out of storage space. Nothing was changed.")}
+  S=P.data;P=R=E=null;th(S.theme);render()}
+function undo(){const o=localStorage.getItem('si-before-restore');if(o==null||!confirm('Go back to your data from before the restore? Anything you logged since then will be lost.'))return;
+  try{localStorage.setItem('si',o)}catch(e){return alert("Couldn't undo: this device is out of storage space. Nothing was changed.")}
+  localStorage.removeItem('si-before-restore');S=JSON.parse(o);P=R=E=null;th(S.theme);render()}
 setInterval(()=>{const r=S.reminder,n=new Date(),k=key(n);
   if(r.on&&r.last!=k&&n.toTimeString().slice(0,5)>=r.time){r.last=k;save();
     navigator.serviceWorker.ready.then(s=>s.showNotification('Self Improve',{body:'Time for your check-in.'}))}},30000);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});
   if(navigator.serviceWorker.controller)navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload())}
+// once per launch: ask to be exempt from storage eviction; PS stays undefined where the browser can't tell
+(async()=>{try{await navigator.storage.persist?.();PS=await navigator.storage.persisted?.();if(tab=='settings')render()}catch(e){}})();
 render();
 </script></body></html>
