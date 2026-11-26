@@ -23,6 +23,7 @@ nav button{background:none;color:var(--mu);border:0;border-radius:0;width:auto;f
 .viz line{stroke:var(--bd);stroke-width:1}.hit rect{fill:transparent}.hit line{opacity:0}.hit:hover line{opacity:1;stroke:var(--mu)}.hit:hover .br{opacity:.8}
 .s1{--c:var(--s1)}.s2{--c:var(--s2)}.ln{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{fill:var(--c);stroke:var(--card);stroke-width:2}.br{fill:var(--s1)}
 .k{display:inline-block;width:14px;height:2px;background:var(--c);vertical-align:middle;margin:0 4px 0 10px}
+.ins{border-left:3px solid var(--ac);overflow-wrap:anywhere}.ins a{color:var(--tx);font-weight:600;white-space:nowrap}
 summary{color:var(--mu);font-size:13px;cursor:pointer;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;margin-top:4px}td,th{text-align:left;padding:3px 4px;border-bottom:1px solid var(--bd)}
 </style></head><body>
 <div id="app"></div>
@@ -30,7 +31,7 @@ summary{color:var(--mu);font-size:13px;cursor:pointer;margin-top:6px}table{width
 <script>
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 let S;try{S=JSON.parse(localStorage.getItem('si'))}catch(e){}
-S=S||{areas:['Body','Mind','Skills'],goals:[],done:{},checkins:{},reminder:{on:false,time:'20:00',last:''}};S.values=S.values||{};
+S=S||{areas:['Body','Mind','Skills'],goals:[],done:{},checkins:{},reminder:{on:false,time:'20:00',last:''}};for(const k of['done','checkins','values'])S[k]=S[k]||{};
 const save=()=>localStorage.setItem('si',JSON.stringify(S));
 const key=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const wd=d=>(d.getDay()+6)%7;
@@ -42,11 +43,72 @@ const scheduled=d=>{const e=new Date(d);e.setHours(23,59,59,999);return S.goals.
 const isDone=(d,id)=>!!(S.done[key(d)]||{})[id];
 const dayOk=(d,id)=>{const l=scheduled(d).filter(g=>!id||g.id==id);return l.length?l.every(g=>isDone(d,g.id)):null};
 // f(d): true=complete, false=missed, null=nothing scheduled (skipped); an unfinished today never breaks the run
-function streak(f,n=400){let cur=0,best=0,run=0,live=true;const d=new Date();
+function streak(f,n=400,t=new Date()){let cur=0,best=0,pb=0,run=0,live=true;const d=new Date(t);
   for(let i=0;i<n;i++,d.setDate(d.getDate()-1)){const r=f(d);if(r==null||(!r&&!i))continue;
-    if(r){run++;best=Math.max(best,run)}else{run=0;live=false}if(live)cur=run}
-  return{cur,best}}
-const W=300,H=150,T=18,B=22,L=30,rnd=v=>Math.round(v*100)/100,md=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    if(r){run++;best=Math.max(best,run);if(!live)pb=Math.max(pb,run)}else{run=0;live=false}if(live)cur=run}
+  return{cur,best,pb}} // pb = best of the earlier runs, so a tie is not a new best
+// insights: patterns in the user's own logs, computed locally. Gaps/rates are fractions of 1, mood/energy on 1-10, valPct in %
+const TH={n:5,moodDiff:1,wkN:3,wkGap:.3,hist:14,trend:.1,trendN:5,enN:4,lowE:4,hiE:7,enGap:.2,weak:.5,weakN:6,wordN:3,wordShare:.3,valN:4,valPct:2,streak:3,max:6};
+// words of 4+ letters only, so shorter stopwords need no entry; Spanish too since notes may be in Spanish
+const STOP=new Set(('that this with have from they them then than were been what when where which while will would could should there their about into more most some just like very also only over much many really again always never still here wasn didnt haven isnt went does '+
+  'today tomorrow yesterday didn doesn dont cant wont because after before being each even ever every going make made need other same such through want well your yours mine myself these those doing done feel felt thing things something nothing enough good better '+
+  'para pero como cómo dónde cuándo está entonces puede hace nadie pues todavía todavia esos esas esta este esto estos estas sobre entre cuando donde porque todo todos toda todas mucho mucha muchos muchas poco poca algo nada tambien también desde hasta hacer hice hizo tengo tiene tener tuve estoy estar estaba estuve había habia hemos sido siempre nunca '+
+  'otra otro otros otras ahora antes después despues luego bien solo sólo cada mismo misma aunque mientras según contra durante ellos ellas nosotros usted ustedes quiero puedo pude mañana manana ayer cosa cosas menos mejor demasiado bastante están estan eran eres somos será sera aquí aqui allí alli').split(' '));
+const WDS=['Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays','Sundays'];
+function insights(now){
+  const out=[],add=(score,text,detail)=>out.push({text,detail,score}),gte=(x,t)=>x>t-1e-9,
+    p=x=>Math.round(x*100)+'%',f1=x=>x.toFixed(1),q=s=>`'${s}'`,nm=v=>v>0?+v:null,avg=a=>a.reduce((s,x)=>s+x,0)/a.length,
+    // days[i] = i days before now (0 = today); built once, every insight reads from it
+    days=[...Array(62)].map((_,i)=>{const d=new Date(now);d.setDate(now.getDate()-i);const k=key(d),l=scheduled(d),dn=S.done[k]||{};
+      return{d,k,l,dn,c:S.checkins[k]||{},a:l.filter(g=>dn[g.id]).length}}),
+    rng=(a,b)=>days.slice(a,b+1),last60=rng(1,60),live=S.goals.filter(g=>!g.off);
+  // a. mood/energy on all-done days vs the rest
+  for(const f of['mood','energy']){const y=[],n=[];last60.forEach(x=>{const v=nm(x.c[f]);if(x.l.length&&v!=null)(x.a==x.l.length?y:n).push(v)});
+    const a=avg(y),b=avg(n);if(y.length>=TH.n&&n.length>=TH.n&&gte(Math.abs(a-b),TH.moodDiff))
+      add(Math.abs(a-b)*15,`Your ${f} averages ${f1(a)} on days you finish all your goals vs ${f1(b)} on days you don't.`,`Based on ${y.length} days with everything done and ${n.length} without, last 60 days.`)}
+  // b. mood when one goal is done vs missed; skipped when it only mirrors (a): same split (own==0) over the same days (mc)
+  const mc=last60.filter(x=>x.l.length&&nm(x.c.mood)!=null).length;
+  live.map(g=>{const y=[],n=[];let own=0;last60.forEach(x=>{const v=nm(x.c.mood);if(v==null||!x.l.includes(g))return;const ok=!!x.dn[g.id];(ok?y:n).push(v);own+=ok!=(x.a==x.l.length)});
+    return{g,a:avg(y),b:avg(n),y:y.length,n:n.length,own}}).filter(r=>(r.own||r.y+r.n<mc)&&r.y>=TH.n&&r.n>=TH.n&&gte(Math.abs(r.a-r.b),TH.moodDiff))
+    .sort((r,s)=>Math.abs(s.a-s.b)-Math.abs(r.a-r.b)).slice(0,2)
+    .forEach(r=>add(Math.abs(r.a-r.b)*13,`Your mood is ${r.a>r.b?'higher':'lower'} on days you do ${q(r.g.name)}: ${f1(r.a)} vs ${f1(r.b)} when you miss it.`,`Based on ${r.y} days done and ${r.n} missed, last 60 days.`));
+  // c. weakest weekday per goal, last 8 weeks up to yesterday; must be the single worst day. f. struggling goal, last 28 days (today once done, like the goal card)
+  live.forEach(g=>{const n=Array(7).fill(0),a=Array(7).fill(0);let fa=0,fb=0;
+    rng(0,56).forEach((x,i)=>{if(!x.l.includes(g))return;const ok=!!x.dn[g.id];if(i<28&&(ok||i)){fb++;fa+=ok}if(i){const w=wd(x.d);n[w]++;a[w]+=ok}});
+    const N=n.reduce((s,v)=>s+v),A=a.reduce((s,v)=>s+v);let w=-1;n.forEach((v,i)=>{if(v&&(w<0||a[i]/v<a[w]/n[w]))w=i});
+    if(w>=0&&n[w]>=TH.wkN&&N-n[w]>=TH.wkN&&!n.some((v,i)=>i!=w&&v&&a[i]*n[w]==a[w]*v)){const r=a[w]/n[w],o=(A-a[w])/(N-n[w]);if(gte(o-r,TH.wkGap))
+      add((o-r)*50,`You miss ${q(g.name)} most on ${WDS[w]} (done ${a[w]} of ${n[w]}) vs ${p(o)} on other days.`,`Based on ${N} scheduled days, last 8 weeks.`)}
+    if(fb>=TH.weakN&&fa/fb<TH.weak)add((TH.weak-fa/fb)*60+10,`You're getting ${q(g.name)} done ${p(fa/fb)} of the time. Try scheduling it on fewer days or making it smaller.`,`${fa} of ${fb} scheduled days done, last 28 days.`)});
+  // d. last 7 days vs the 28 before; hist = oldest day (within 35) that had anything scheduled
+  const tot=l=>l.reduce((s,x)=>({a:s.a+x.a,b:s.b+x.l.length}),{a:0,b:0}),w1=tot(rng(1,7)),w4=tot(rng(8,35)),hist=rng(1,35).map(x=>!!x.l.length).lastIndexOf(true)+1;
+  if(hist>=TH.hist&&w1.b>=TH.trendN&&w4.b>=TH.trendN){const r1=w1.a/w1.b,r4=w4.a/w4.b;if(gte(Math.abs(r1-r4),TH.trend))
+    add(Math.abs(r1-r4)*100,r1>r4?`You're on a roll: ${p(r1)} of your goals done in the last 7 days, up from ${p(r4)} before that.`:`Your completion slipped to ${p(r1)} in the last 7 days, down from ${p(r4)} before that.`,
+      `${w1.a} of ${w1.b} done in the last 7 days vs ${w4.a} of ${w4.b} in the weeks before.`)}
+  // e. completion the day after a low- vs high-energy check-in
+  const lo={n:0,a:0,b:0},hi={n:0,a:0,b:0};
+  for(let i=1;i<=60;i++){const x=days[i],e=nm(days[i+1].c.energy),g=!x.l.length||e==null?0:e<=TH.lowE?lo:e>=TH.hiE?hi:0;if(g){g.n++;g.a+=x.a;g.b+=x.l.length}}
+  if(lo.n>=TH.enN&&hi.n>=TH.enN&&gte(hi.a/hi.b-lo.a/lo.b,TH.enGap))add((hi.a/hi.b-lo.a/lo.b)*60,
+    `After a low-energy evening (${TH.lowE} or less) you get ${p(lo.a/lo.b)} of the next day's goals done, vs ${p(hi.a/hi.b)} after a high-energy one (${TH.hiE}+).`,`Based on ${lo.n} days after low energy and ${hi.n} after high, last 60 days.`);
+  // g. recurring words in the last 30 check-ins' notes, each note counted once
+  const ck=Object.keys(S.checkins).filter(k=>k<=days[0].k).sort().slice(-30).map(k=>S.checkins[k]||{});
+  for(const[f,lab]of[['fix','things to fix'],['win','wins']]){const ns=ck.map(c=>c[f]).filter(s=>typeof s=='string'&&s.trim()),m=new Map();
+    ns.forEach(s=>new Set(s.toLowerCase().match(/\p{L}+/gu)).forEach(w=>{if(w.length>=4&&!STOP.has(w))m.set(w,(m.get(w)||0)+1)}));
+    const[w,c]=[...m].sort((a,b)=>b[1]-a[1])[0]||[];
+    if(c>=TH.wordN&&c/ns.length>=TH.wordShare)add(c/ns.length*40,`'${w}' came up in ${c} of your last ${ns.length} ${lab}.`,`Based on ${ns.length} notes in your last ${ck.length} check-ins.`)}
+  // h. measure trend, first vs last value plus least-squares slope, only when both agree; neutral since lower can be better
+  live.filter(g=>g.unit).forEach(g=>{const pts=rng(0,59).map((x,i)=>[-i,S.values[x.k]?.[g.id]]).filter(([,v])=>typeof v=='number'&&isFinite(v)).reverse();
+    if(pts.length<TH.valN||!pts[0][1])return;const[t0,v0]=pts[0],[t1,v1]=pts[pts.length-1],ch=(v1-v0)/Math.abs(v0)*100;
+    const mx=avg(pts.map(x=>x[0])),my=avg(pts.map(x=>x[1])),sl=7*pts.reduce((s,[x,y])=>s+(x-mx)*(y-my),0)/pts.reduce((s,[x])=>s+(x-mx)**2,0),sp=t1-t0,
+      dp=Math.max(...[v0,v1].map(v=>(String(rnd(v)).split('.')[1]||'').length));
+    if(!gte(Math.abs(ch),TH.valPct)||sl*ch<=0)return;
+    add(Math.min(30,8+Math.abs(ch)*1.5),`Your ${q(g.name)} (${g.unit}) went from ${rnd(v0).toFixed(dp)} to ${rnd(v1).toFixed(dp)} over ${sp>=14?Math.round(sp/7)+' weeks':sp+' days'} (${ch>0?'+':''}${ch.toFixed(1)}%).`,
+      `Based on ${pts.length} values in the last 60 days; trend ${sl>0?'+':''}${rnd(sl)} per week.`)});
+  // i. streak at or one day short of its best
+  const s=streak(d=>dayOk(d),400,now);
+  if(s.cur>=TH.streak&&s.cur>=s.best-1)add(s.cur==s.best?20:16,s.cur==s.best?`You're on a streak of ${s.cur} days, ${s.cur>s.pb?'your best yet':'matching your best'}. Keep it going!`:`You're on a streak of ${s.cur} days, one day short of your best (${s.best}).`,
+    `Days in a row with every scheduled goal done; rest days don't break it.`);
+  return out.sort((a,b)=>b.score-a.score).slice(0,TH.max)}
+const W=300,H=150,T=18,B=22,L=30,rnd=v=>Math.round(v*100)/100,MDF=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}),md=d=>MDF.format(d);
 const svg=(lab,o)=>`<svg class="viz" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lab)}">${o}</svg>`;
 const grid=(ticks,sy,x2,f)=>ticks.map(t=>`<line x1="${L}" x2="${x2}" y1="${sy(t)}" y2="${sy(t)}"/><text x="${L-4}" y="${sy(t)+3}" text-anchor="end">${f(t)}</text>`).join('');
 const tbl=(h,rows)=>`<details><summary>Show data table</summary><table><tr>${h.map(x=>`<th>${esc(x)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(x=>`<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></details>`;
@@ -78,8 +140,10 @@ function lineChart(lab,ser,n,ticks,xl,join,R){const y0=ticks[0],y1=ticks.at(-1),
 
 const views={
 today(){
-  const t=new Date(),k=key(t),list=scheduled(t),n=list.filter(g=>isDone(t,g.id)).length,c=S.checkins[k]||{};
+  // Today is the launch screen: a bug in insights must never blank it
+  const t=new Date(),k=key(t),list=scheduled(t),n=list.filter(g=>isDone(t,g.id)).length,c=S.checkins[k]||{},top=(()=>{try{return insights(t)[0]}catch(e){}})();
   return `<h1>Today</h1><div class="mu">${t.toDateString()}</div>
+  ${top?`<div class="card ins" style="font-size:14px">${esc(top.text)} <a href="#" onclick="tab='progress';render();return false">See all insights</a></div>`:''}
   ${list.length?bar(n/list.length):''}
   ${list.map(g=>`<div class="card" style="display:flex;gap:8px;align-items:center"><label class="row" style="flex:1"><input type="checkbox" ${isDone(t,g.id)?'checked':''} onchange="tog('${g.id}')">
   <span>${esc(g.name)}<br><span class="mu">${esc(g.area)}${g.unit?' · '+esc(g.unit):''}${g.why?' · '+esc(g.why):''}</span></span></label>
@@ -99,7 +163,8 @@ week(){
 progress(){
   const t=new Date(),day=i=>{const d=new Date(t);d.setDate(t.getDate()-i);return d},all=streak(d=>dayOk(d)),
     ci=[...Array(7)].filter((_,i)=>S.checkins[key(day(i))]).length,pl=n=>n==1?'day':'days',
-    tile=(l,v,u)=>`<div class="card tile"><div class="mu">${l}</div><b>${v}</b><span class="mu">${u}</span></div>`;
+    tile=(l,v,u)=>`<div class="card tile"><div class="mu">${l}</div><b>${v}</b><span class="mu">${u}</span></div>`,ins=insights(t),
+    logs=new Set([...Object.keys(S.done).filter(k=>Object.values(S.done[k]||{}).some(Boolean)),...Object.keys(S.checkins),...Object.keys(S.values)]).size;
   const mon=day(wd(t)),wk=[...Array(8)].map((_,w)=>{const m=new Date(mon);m.setDate(mon.getDate()-(7-w)*7);let a=0,b=0;
     for(let i=0;i<7;i++){const d=new Date(m);d.setDate(m.getDate()+i);if(d>t)break;const l=scheduled(d);b+=l.length;a+=l.filter(g=>isDone(d,g.id)).length}
     return{m,p:b?a/b:null}}),wl=i=>wk[i].m.toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
@@ -112,7 +177,10 @@ progress(){
     ks.forEach((k,j)=>v[ix(k)]=vs[j]);
     return `<div class="card"><b>${esc(g.name)}</b> <span class="mu">(${esc(g.unit)})</span>${lineChart(`${g.name} in ${g.unit}: ${ks.length} values, latest ${rnd(vs.at(-1))}, range ${rnd(Math.min(...vs))} to ${rnd(Math.max(...vs))}`,
       [{n:'',c:'s1',v}],n,nice(Math.min(...vs),Math.max(...vs)),i=>md(new Date(+k0+i*864e5)),1,40)}${tbl(['Date',g.unit],ks.map((k,j)=>[k,rnd(vs[j])]))}</div>`}).join('');
-  return `<h1>Progress</h1><div class="tiles">${tile('Current streak',all.cur,' '+pl(all.cur))}${tile('Best streak',all.best,' '+pl(all.best))}${tile('Check-ins, last 7 days',ci,' of 7')}</div>
+  return `<h1>Progress</h1><h2>Insights</h2>${ins.length?ins.map(x=>`<div class="card ins">${esc(x.text)}<div class="mu">${esc(x.detail)}</div></div>`).join('')
+    +'<div class="mu">Patterns, not proof: they show what tends to go together in your logs.</div>'
+    :`<div class="card mu">${logs<14?`You have ${logs} ${pl(logs)} of logs so far. Insights appear after about a week or two of regular logging.`:`You have ${logs} days of logs, but no clear pattern stands out right now. Keep logging and check back.`}</div>`}
+  <h2>Overview</h2><div class="tiles">${tile('Current streak',all.cur,' '+pl(all.cur))}${tile('Best streak',all.best,' '+pl(all.best))}${tile('Check-ins, last 7 days',ci,' of 7')}</div>
   <h2>Weekly completion, last 8 weeks</h2><div class="card">${wk.some(w=>w.p!=null)?barChart('Weekly completion, last 8 weeks: '+wk.map((w,i)=>wl(i)+' '+(w.p==null?'none':Math.round(w.p*100)+'%')).join(', '),wk.map(w=>w.p),wl)
     +tbl(['Week of','Done'],wk.map((w,i)=>[wl(i),w.p==null?'nothing scheduled':Math.round(w.p*100)+'%'])):'<div class="mu">No goals were scheduled in the last 8 weeks. Add goals in the Goals tab.</div>'}</div>
   <h2>Goals, last 28 days</h2>${gl||'<div class="card mu">No goals yet. Add one in the Goals tab.</div>'}
